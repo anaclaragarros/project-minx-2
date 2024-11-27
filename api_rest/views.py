@@ -65,18 +65,14 @@ def seguirUsuario(request):
     
 @api_view(['POST'])
 def criarPostagem(request):
-    usuario = request.user 
-    titulo = request.data.get('titulo')
-    conteudo = request.data.get('conteudo')
+    data = request.data
 
-    if not titulo or not conteudo:
-        return Response({'error': 'Insira sua postagem'}, status=status.HTTP_400_BAD_REQUEST)
-
-    postagem = Postagem.objects.create(usuario=usuario, titulo=titulo, conteudo=conteudo)
-    serializer = PostagemSerializer(postagem)
-
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+    serializer = PostagemSerializer(data=data)  
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    return Response(status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def curtidaPostagem(request):
@@ -125,30 +121,8 @@ def comentarioPostagem(request):
 
 @api_view(['GET'])
 def feed(request):
-    usuario = request.user  
-    amigos = Amizade.objects.filter(usuario1=usuario) | Amizade.objects.filter(usuario2=usuario)
-
-    usuarios_amigos = [amizade.usuario2 if amizade.usuario1 == usuario else amizade.usuario1 for amizade in amigos]
-    usuarios_amigos.append(usuario)  
- 
-    postagens = Postagem.objects.filter(usuario__in=usuarios_amigos).order_by('-data_criacao') 
+    postagens = Postagem.objects.all()
     serializer = PostagemSerializer(postagens, many=True)
 
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(serializer.data)
 
-
-
-@api_view(['GET'])
-def feed(request):
-    if not request.user.is_authenticated:
-        return Response({'error': 'Você precisa estar logado para acessar o feed'}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    usuario = request.user  
-    amigos = Amizade.objects.filter(usuario1=usuario) | Amizade.objects.filter(usuario2=usuario)
-    usuarios_amigos = [amizade.usuario2 if amizade.usuario1 == usuario else amizade.usuario1 for amizade in amigos]
-    usuarios_amigos.append(usuario) 
-
-    postagens = Postagem.objects.filter(usuario__in=usuarios_amigos).order_by('-data_criacao')
-    serializer = PostagemSerializer(postagens, many=True)
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
